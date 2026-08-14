@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TT Workflow — Simulateur ESP32 DHT22</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --red:    #E30613;
+    --orange: #F7941D;
+    --blue:   #0072BC;
+    --green:  #39B54A;
+    --bg:     #0a0e1a;
+    --panel:  #111827;
+    --border: #1e2d45;
+    --text:   #e2e8f0;
+    --dim:    #4a5568;
+    --mono:   'Share Tech Mono', monospace;
+    --title:  'Orbitron', monospace;
+    --body:   'Rajdhani', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,114,188,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,114,188,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative; z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tt-badge {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--red), var(--orange));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--title);
+    font-weight: 900; font-size: 14px; color: #fff;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-family: var(--title);
+    font-size: 18px; font-weight: 700;
+    letter-spacing: .08em;
+    background: linear-gradient(90deg, var(--red), var(--orange));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  header p {
+    font-size: 13px; color: var(--dim);
+    font-family: var(--mono);
+    letter-spacing: .05em;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity:1; transform: scale(1); }
+    50% { opacity:.5; transform: scale(1.3); }
+  }
+
+  /* ── Grid layout ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .grid, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ── Panels ── */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--red), var(--orange));
+  }
+
+  .panel-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* ── Big display numbers ── */
+  .big-val {
+    font-family: var(--title);
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 1;
+    transition: color .3s;
+  }
+
+  .big-unit {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--dim);
+    margin-left: 4px;
+  }
+
+  .val-normal  { color: var(--green);  }
+  .val-warning { color: var(--orange); }
+  .val-alert   { color: var(--red); animation: blink .6s infinite; }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── Sliders ── */
+  .slider-wrap {
+    margin-top: 16px;
+  }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .slider-title {
+    font-size: 12px;
+    color: var(--dim);
+    font-family: var(--mono);
+    letter-spacing: .08em;
+  }
+
+  .slider-val {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+
+  input[type=range]:hover { opacity: .9; }
+
+  input[type=range].temp-slider {
+    background: linear-gradient(90deg, #0072BC, #39B54A 40%, #F7941D 65%, #E30613);
+  }
+
+  input[type=range].hum-slider {
+    background: linear-gradient(90deg, #F7941D, #0072BC 40%, #39B54A 70%, #E30613);
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--red);
+    box-shadow: 0 0 8px rgba(227,6,19,.5);
+    cursor: grab;
+  }
+
+  input[type=range]:active::-webkit-slider-thumb { cursor: grabbing; }
+
+  /* ── Thresholds bar ── */
+  .thresh-bar {
+    margin-top: 10px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    position: relative;
+  }
+
+  .thresh-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .3s, background .3s;
+  }
+
+  /* ── LEDs ── */
+  .led-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .led {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    transition: background .3s, box-shadow .3s;
+  }
+
+  .led.off { background: #1a2035; box-shadow: none; }
+
+  .led.red-on   { background: var(--red);   box-shadow: 0 0 10px var(--red), 0 0 20px rgba(227,6,19,.4); }
+  .led.blue-on  { background: var(--blue);  box-shadow: 0 0 10px var(--blue), 0 0 20px rgba(0,114,188,.4); }
+  .led.green-on { background: var(--green); box-shadow: 0 0 10px var(--green), 0 0 20px rgba(57,181,74,.4); }
+
+  .led-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dim);
+  }
+
+  /* ── LCD Display ── */
+  .lcd {
+    background: #1a2a1a;
+    border: 2px solid #2a4a2a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 15px;
+    color: #7dff7d;
+    text-shadow: 0 0 6px rgba(125,255,125,.5);
+    letter-spacing: .12em;
+    line-height: 1.8;
+    min-height: 62px;
+  }
+
+  /* ── Serial Monitor ── */
+  .serial {
+    background: #050a0e;
+    border: 1px solid #1a2a3a;
+    border-radius: 10px;
+    padding: 14px;
+    height: 180px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.7;
+  }
+
+  .serial::-webkit-scrollbar { width: 4px; }
+  .serial::-webkit-scrollbar-track { background: transparent; }
+  .serial::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-data    { color: #7dd3fc; }
+  .log-alert   { color: var(--red); font-weight: 700; }
+  .log-ok      { color: var(--green); }
+  .log-cmd     { color: var(--orange); }
+  .log-reset   { color: #a78bfa; }
+  .log-system  { color: var(--dim); }
+
+  /* ── Alert banner ── */
+  .alert-banner {
+    display: none;
+    background: linear-gradient(135deg, #1a0505, #2a0808);
+    border: 1px solid var(--red);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    animation: shake .3s;
+  }
+
+  .alert-banner.show { display: flex; align-items: center; gap: 12px; }
+
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)}
+  }
+
+  .alert-icon { font-size: 20px; }
+  .alert-text { font-family: var(--mono); font-size: 12px; color: var(--red); }
+
+  /* ── Buzzer indicator ── */
+  .buzzer-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100%;
+  }
+
+  .buzzer-icon {
+    font-size: 36px;
+    transition: transform .1s;
+  }
+
+  .buzzer-icon.active { animation: vibrate .1s infinite; }
+
+  @keyframes vibrate {
+    0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-5deg)} 75%{transform:rotate(5deg)}
+  }
+
+  .buzzer-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: .1em;
+  }
+
+  /* ── Wokwi link ── */
+  .wokwi-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #1e3a5f, #0d2137);
+    border: 1px solid #2a5080;
+    color: #7dd3fc;
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .05em;
+    transition: all .2s;
+    margin-top: 8px;
+  }
+
+  .wokwi-btn:hover {
+    background: linear-gradient(135deg, #2a5080, #1a3a5f);
+    border-color: #7dd3fc;
+    transform: translateY(-1px);
+  }
+
+  /* ── Threshold config ── */
+  .thresh-config {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .thresh-input-wrap label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: .1em;
+    margin-bottom: 4px;
+  }
+
+  .thresh-input-wrap input[type=number] {
+    width: 100%;
+    background: #0a0e1a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    transition: border .2s;
+  }
+
+  .thresh-input-wrap input:focus { border-color: var(--orange); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="tt-badge">TT</div>
+    <div>
+      <h1>ESP32 · DHT22 MONITOR</h1>
+      <p>Simulation Wokwi — Température &amp; Humidité</p>
+    </div>
+    <div class="status-dot" id="statusDot"></div>
+  </header>
+
+  <!-- Alert banner -->
+  <div class="alert-banner" id="alertBanner">
+    <span class="alert-icon">🚨</span>
+    <span class="alert-text" id="alertText">ALERTE DÉTECTÉE</span>
+  </div>
+
+  <!-- Main grid: Temp + Hum -->
+  <div class="grid">
+
+    <!-- Temperature -->
+    <div class="panel">
+      <div class="panel-label">// TEMPÉRATURE</div>
+      <div>
+        <span class="big-val val-normal" id="tempVal">24.0</span>
+        <span class="big-unit">°C</span>
+      </div>
+      <div style="margin-bottom:20px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;">
+  <div style="font-family:var(--title);font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:10px;">CAPTEUR ACTIF</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button id="btn_cap1" onclick="selectCapteur(1)" style="flex:1;min-width:120px;padding:10px 14px;border-radius:8px;border:2px solid var(--blue);background:var(--blue);color:#fff;font-family:var(--title);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;">
+      📡 Capteur 1<br><span style="font-size:10px;font-weight:400;opacity:.85;">Jendouba</span>
+    </button>
+    <button id="btn_cap2" onclick="selectCapteur(2)" style="flex:1;min-width:120px;padding:10px 14px;border-radius:8px;border:2px solid var(--dim);background:transparent;color:var(--dim);font-family:var(--title);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;">
+      📡 Capteur 2<br><span style="font-size:10px;font-weight:400;opacity:.85;">Ghardimaou</span>
+    </button>
+    <button id="btn_cap3" onclick="selectCapteur(3)" style="flex:1;min-width:120px;padding:10px 14px;border-radius:8px;border:2px solid var(--dim);background:transparent;color:var(--dim);font-family:var(--title);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;">
+      📡 Capteur 3<br><span style="font-size:10px;font-weight:400;opacity:.85;">Bousselem</span>
+    </button>
+  </div>
+  <div id="capteurActifLabel" style="margin-top:8px;font-size:11px;font-family:var(--mono);color:var(--blue);">● Capteur actif : ID=1 — Jendouba</div>
+</div>
+<div class="slider-wrap">
+        <div class="slider-header">
+          <span class="slider-title">CURSEUR SIMULÉ</span>
+          <span class="slider-val" id="tempSliderVal">24.0°C</span>
+        </div>
+        <input type="range" class="temp-slider" id="tempSlider"
+               min="-10" max="60" step="0.5" value="24">
+        <div class="thresh-bar" style="margin-top:8px">
+          <div class="thresh-fill" id="tempBar" style="width:50%;background:var(--green)"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--dim)">-10°C</span>
+          <span style="font-family:var(--mono);font-size:9px;color:var(--dim)">60°C</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Humidity -->
+    <div class="panel">
+      <div class="panel-label">// HUMIDITÉ</div>
+      <div>
+        <span class="big-val val-normal" id="humVal">55.0</span>
+        <span class="big-unit">%</span>
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-header">
+          <span class="slider-title">CURSEUR SIMULÉ</span>
+          <span class="slider-val" id="humSliderVal">55.0%</span>
+        </div>
+        <input type="range" class="hum-slider" id="humSlider"
+               min="0" max="100" step="1" value="55">
+        <div class="thresh-bar" style="margin-top:8px">
+          <div class="thresh-fill" id="humBar" style="width:55%;background:var(--green)"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--dim)">0%</span>
+          <span style="font-family:var(--mono);font-size:9px;color:var(--dim)">100%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seuils + LEDs + Buzzer -->
+  <div class="grid-3">
+
+    <!-- Seuils config -->
+    <div class="panel" style="grid-column:span 2">
+      <div class="panel-label">// CONFIGURATION SEUILS</div>
+      <div class="thresh-config">
+        <div class="thresh-input-wrap">
+          <label>TEMP MIN (°C)</label>
+          <input type="number" id="tempMin" value="10" min="-40" max="40">
+        </div>
+        <div class="thresh-input-wrap">
+          <label>TEMP MAX (°C)</label>
+          <input type="number" id="tempMax" value="35" min="20" max="80">
+        </div>
+        <div class="thresh-input-wrap">
+          <label>HUM MIN (%)</label>
+          <input type="number" id="humMin" value="20" min="0" max="50">
+        </div>
+        <div class="thresh-input-wrap">
+          <label>HUM MAX (%)</label>
+          <input type="number" id="humMax" value="80" min="50" max="100">
+        </div>
+      </div>
+
+      <!-- LEDs -->
+      <div style="margin-top:16px">
+        <div class="panel-label" style="margin-bottom:10px">// ÉTAT LEDs ESP32</div>
+        <div class="led-row">
+          <div class="led off" id="ledTemp"></div>
+          <span class="led-label">D2 · ALERTE TEMP</span>
+          <div style="width:16px"></div>
+          <div class="led off" id="ledHum"></div>
+          <span class="led-label">D5 · ALERTE HUM</span>
+          <div style="width:16px"></div>
+          <div class="led off" id="ledOk"></div>
+          <span class="led-label">D18 · TOUT OK</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buzzer -->
+    <div class="panel" style="text-align:center">
+      <div class="panel-label">// BUZZER D15</div>
+      <div class="buzzer-wrap">
+        <div class="buzzer-icon" id="buzzerIcon">🔔</div>
+        <div class="buzzer-label" id="buzzerLabel">SILENCE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LCD + Serial -->
+  <div class="grid">
+    <!-- LCD -->
+    <div class="panel">
+      <div class="panel-label">// ÉCRAN LCD I2C 16×2</div>
+      <div class="lcd" id="lcdDisplay">
+        &gt; 24.0°C  OK<br>~ 55.0%   OK
+      </div>
+      <a class="wokwi-btn" href="https://wokwi.com/projects/new/esp32" target="_blank">
+        🔗 Ouvrir dans Wokwi
+      </a>
+    </div>
+
+    <!-- Serial Monitor -->
+    <div class="panel">
+      <div class="panel-label">// SERIAL MONITOR (115200)</div>
+      <div class="serial" id="serialLog">
+        <div class="log-system">═══ TT Workflow — DHT22 Monitor ═══</div>
+        <div class="log-ok">Commandes: T:35.5 | H:75 | R</div>
+        <div class="log-system">Seuils TEMP: 10 - 35°C</div>
+        <div class="log-system">Seuils HUM : 20 - 80%</div>
+        <div class="log-system">════════════════════════════════</div>
+      </div>
+      <!-- Commandes manuelles -->
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input id="cmdInput" placeholder='Ex: T:42  ou  H:90  ou  R'
+          style="flex:1;background:#050a0e;border:1px solid var(--border);border-radius:8px;
+                 padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;">
+        <button onclick="sendCmd()" style="
+          background:linear-gradient(135deg,var(--red),var(--orange));
+          border:none;border-radius:8px;padding:8px 14px;color:#fff;
+          font-family:var(--mono);font-size:11px;cursor:pointer;font-weight:700;">
+          SEND
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────
+const CAPTEURS = {
+  1: { nom: "Capteur TT-001", localisation: "Jendouba" },
+  2: { nom: "Capteur TT-002", localisation: "Ghardimaou" },
+  3: { nom: "Capteur TT-003", localisation: "Bousselem" },
+};
+
+const state = {
+  temp:    24.0,
+  hum:     55.0,
+  capteurId: 1,
+  seuils:  { tempMin:10, tempMax:35, humMin:20, humMax:80 },
+  alertTemp: false,
+  alertHum:  false,
+  buzzerActive: false,
+  buzzerCount: 0,
+};
+
+function selectCapteur(id) {
+  state.capteurId = id;
+  // Reconnect WS to send with new capteur_id
+  [1,2,3].forEach(n => {
+    const btn = document.getElementById('btn_cap'+n);
+    if (!btn) return;
+    if (n === id) {
+      btn.style.borderColor = 'var(--blue)';
+      btn.style.background  = 'var(--blue)';
+      btn.style.color       = '#fff';
+    } else {
+      btn.style.borderColor = 'var(--dim)';
+      btn.style.background  = 'transparent';
+      btn.style.color       = 'var(--dim)';
+    }
+  });
+  const lbl = document.getElementById('capteurActifLabel');
+  if (lbl) lbl.textContent = `● Capteur actif : ID=${id} — ${CAPTEURS[id].localisation}`;
+  logSerial(`[CONFIG] 📡 Capteur sélectionné: ID=${id} (${CAPTEURS[id].localisation})`, 'log-cmd');
+  wsSendData();
+}
+
+// ── DOM refs ──────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+// ── Init sliders ──────────────────────────────────────────
+$('tempSlider').addEventListener('input', e => {
+  state.temp = parseFloat(e.target.value);
+  $('tempSliderVal').textContent = state.temp.toFixed(1) + '°C';
+  update(); // 💥 Hna update() yekhdem s7i7
+  logSerial(`[CURSEUR] T:${state.temp.toFixed(1)} → température forcée`, 'log-cmd');
+  logSerial(`DATA:{"temperature":${state.temp.toFixed(1)},"humidite":${state.hum.toFixed(1)},"source":"ESP32_DHT22"}`, 'log-data');
+  // ⬅️ Fix: wsSendData déjà envoyé par l'intervalle toutes les 2s — éviter double envoi
+});
+
+$('humSlider').addEventListener('input', e => {
+  state.hum = parseFloat(e.target.value);
+  $('humSliderVal').textContent = state.hum.toFixed(1) + '%';
+  update();
+  logSerial(`[CURSEUR] H:${state.hum.toFixed(1)} → humidité forcée`, 'log-cmd');
+  logSerial(`DATA:{"temperature":${state.temp.toFixed(1)},"humidite":${state.hum.toFixed(1)},"source":"ESP32_DHT22"}`, 'log-data');
+  // ⬅️ Fix: wsSendData déjà envoyé par l'intervalle toutes les 2s — éviter double envoi
+});
+
+// Seuils
+['tempMin','tempMax','humMin','humMax'].forEach(id => {
+  $(id).addEventListener('change', () => {
+    state.seuils.tempMin = parseFloat($('tempMin').value);
+    state.seuils.tempMax = parseFloat($('tempMax').value);
+    state.seuils.humMin  = parseFloat($('humMin').value);
+    state.seuils.humMax  = parseFloat($('humMax').value);
+    logSerial(`[CONFIG] Seuils: T(${state.seuils.tempMin}-${state.seuils.tempMax}°C) H(${state.seuils.humMin}-${state.seuils.humMax}%)`, 'log-reset');
+    update();
+  });
+});
+
+// ── Commande manuelle (imite Serial) ─────────────────────
+function sendCmd() {
+  const cmd = $('cmdInput').value.trim().toUpperCase();
+  $('cmdInput').value = '';
+  if (!cmd) return;
+
+  if (cmd === 'R') {
+    logSerial('[RESET] Retour lecture DHT22 réelle', 'log-reset');
+    return;
+  }
+  if (cmd.startsWith('T:')) {
+    const v = parseFloat(cmd.slice(2));
+    if (!isNaN(v) && v >= -40 && v <= 80) {
+      state.temp = v;
+      $('tempSlider').value = v;
+      $('tempSliderVal').textContent = v.toFixed(1) + '°C';
+      logSerial(`[CMD] Température forcée: ${v.toFixed(1)}°C`, 'log-cmd');
+      update();
+    }
+  } else if (cmd.startsWith('H:')) {
+    const v = parseFloat(cmd.slice(2));
+    if (!isNaN(v) && v >= 0 && v <= 100) {
+      state.hum = v;
+      $('humSlider').value = v;
+      $('humSliderVal').textContent = v.toFixed(1) + '%';
+      logSerial(`[CMD] Humidité forcée: ${v.toFixed(1)}%`, 'log-cmd');
+      update();
+    }
+  }
+}
+
+$('cmdInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendCmd();
+});
+
+// ── Main update ───────────────────────────────────────────
+function update() {
+  const { temp, hum, seuils } = state;
+
+  // Classes valeur
+  const tempClass = temp > seuils.tempMax || temp < seuils.tempMin
+    ? (Math.abs(temp - (temp > seuils.tempMax ? seuils.tempMax : seuils.tempMin)) > 5 ? 'val-alert' : 'val-warning')
+    : 'val-normal';
+  const humClass = hum > seuils.humMax || hum < seuils.humMin
+    ? (Math.abs(hum - (hum > seuils.humMax ? seuils.humMax : seuils.humMin)) > 10 ? 'val-alert' : 'val-warning')
+    : 'val-normal';
+
+  $('tempVal').className = `big-val ${tempClass}`;
+  $('tempVal').textContent = temp.toFixed(1);
+  $('humVal').className  = `big-val ${humClass}`;
+  $('humVal').textContent  = hum.toFixed(1);
+
+  // Barres progression
+  const tempPct = ((temp + 10) / 70 * 100).toFixed(0);
+  const humPct  = hum.toFixed(0);
+  const tempColor = tempClass === 'val-normal' ? 'var(--green)' : tempClass === 'val-warning' ? 'var(--orange)' : 'var(--red)';
+  const humColor  = humClass  === 'val-normal' ? 'var(--blue)'  : humClass  === 'val-warning' ? 'var(--orange)' : 'var(--red)';
+
+  $('tempBar').style.width = `${Math.min(100,Math.max(0,tempPct))}%`;
+  $('tempBar').style.background = tempColor;
+  $('humBar').style.width  = `${humPct}%`;
+  $('humBar').style.background = humColor;
+
+  // Alertes
+  const prevAlertTemp = state.alertTemp;
+  const prevAlertHum  = state.alertHum;
+  state.alertTemp = (temp > seuils.tempMax || temp < seuils.tempMin);
+  state.alertHum  = (hum  > seuils.humMax  || hum  < seuils.humMin);
+
+  if (state.alertTemp !== prevAlertTemp) {
+    if (state.alertTemp) {
+      logSerial(`>>> ALERTE TEMPERATURE: ${temp.toFixed(1)}°C (seuil: ${seuils.tempMin}-${seuils.tempMax})`, 'log-alert');
+      logSerial(`{"alerte":"temperature","valeur":${temp.toFixed(1)},"seuil_max":${seuils.tempMax}}`, 'log-alert');
+    } else {
+      logSerial(`>>> Température OK: ${temp.toFixed(1)}°C`, 'log-ok');
+    }
+  }
+
+  if (state.alertHum !== prevAlertHum) {
+    if (state.alertHum) {
+      logSerial(`>>> ALERTE HUMIDITE: ${hum.toFixed(1)}% (seuil: ${seuils.humMin}-${seuils.humMax})`, 'log-alert');
+      logSerial(`{"alerte":"humidite","valeur":${hum.toFixed(1)},"seuil_max":${seuils.humMax}}`, 'log-alert');
+    } else {
+      logSerial(`>>> Humidité OK: ${hum.toFixed(1)}%`, 'log-ok');
+    }
+  }
+
+  // LEDs
+  $('ledTemp').className = `led ${state.alertTemp ? 'red-on' : 'off'}`;
+  $('ledHum').className  = `led ${state.alertHum  ? 'blue-on' : 'off'}`;
+  $('ledOk').className   = `led ${!state.alertTemp && !state.alertHum ? 'green-on' : 'off'}`;
+
+  // Buzzer
+  const anyAlert = state.alertTemp || state.alertHum;
+  $('buzzerIcon').className  = `buzzer-icon ${anyAlert ? 'active' : ''}`;
+  $('buzzerLabel').textContent = anyAlert ? '⚠️ ALARME' : 'SILENCE';
+  $('buzzerLabel').style.color = anyAlert ? 'var(--red)' : 'var(--dim)';
+
+  // Banner
+  const banner = $('alertBanner');
+  if (anyAlert) {
+    banner.classList.add('show');
+    let txt = '';
+    if (state.alertTemp) txt += `🌡️ TEMP: ${temp.toFixed(1)}°C  `;
+    if (state.alertHum)  txt += `💧 HUM: ${hum.toFixed(1)}%`;
+    $('alertText').textContent = txt;
+  } else {
+    banner.classList.remove('show');
+  }
+
+  // Status dot
+  $('statusDot').style.background = anyAlert ? 'var(--red)' : 'var(--green)';
+  $('statusDot').style.boxShadow  = anyAlert
+    ? '0 0 8px var(--red)'
+    : '0 0 8px var(--green)';
+
+  // LCD
+  const tempAlert = state.alertTemp ? '!ALT' : ' OK ';
+  const humAlert  = state.alertHum  ? '!ALT' : ' OK ';
+  $('lcdDisplay').innerHTML =
+    `> ${temp.toFixed(1).padStart(5)}°C ${tempAlert}<br>~ ${hum.toFixed(1).padStart(5)}%  ${humAlert}`;
+}
+
+// ── Logger Serial ─────────────────────────────────────────
+function logSerial(text, cls = 'log-data') {
+  const log = $('serialLog');
+  const ts = new Date().toLocaleTimeString('fr-FR', {hour12:false});
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = `[${ts}] ${text}`;
+  log.appendChild(line);
+  // Keep last 100 lines
+  while (log.children.length > 100) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ══════════════════════════════════════════════════════════
+//  WebSocket — Envoi vers le backend TT
+// ══════════════════════════════════════════════════════════
+let ws = null;
+let wsConnected = false;
+let wsReconnectTimer = null;
+
+function wsConnect() {
+  const host = window.location.hostname || 'localhost';
+  const url  = `ws://${host}:8000/ws/capteurs`;
+  try {
+    ws = new WebSocket(url);
+    logSerial(`[WS] Connexion à ${url}...`, 'log-system');
+    updateWsStatus(false);
+  } catch(e) {
+    logSerial(`[WS] Erreur création socket: ${e.message}`, 'log-alert');
+    scheduleReconnect();
+    return;
+  }
+
+  ws.onopen = () => {
+    wsConnected = true;
+    updateWsStatus(true);
+    logSerial('[WS] ✅ Connecté au backend TT !', 'log-ok');
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    // Envoi immédiat au connect
+    wsSendData();
+  };
+
+  ws.onclose = () => {
+    wsConnected = false;
+    updateWsStatus(false);
+    logSerial('[WS] ❌ Déconnecté — reconnexion dans 4s...', 'log-alert');
+    scheduleReconnect();
+  };
+
+  ws.onerror = () => {
+    wsConnected = false;
+    updateWsStatus(false);
+    logSerial('[WS] ⚠️ Erreur WebSocket', 'log-alert');
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      const status = d.status || '?';
+      logSerial(`[WS] ← Réponse backend: ${status}`, 'log-ok');
+      if (d.pannes_creees && d.pannes_creees.length > 0) {
+        d.pannes_creees.forEach(p => {
+          logSerial(`[BD] 🚨 Panne créée → ticket:${p.ticket} type:${p.type} val:${p.valeur}`, 'log-alert');
+        });
+      }
+      if (d.alerte_creee) {
+        logSerial(`[BD] 🔔 Alerte créée en BD`, 'log-alert');
+      }
+    } catch(err) {
+      logSerial(`[WS] Réponse non-JSON: ${e.data.slice(0,60)}`, 'log-system');
+    }
+  };
+}
+
+function scheduleReconnect() {
+  if (wsReconnectTimer) return;
+  wsReconnectTimer = setTimeout(() => {
+    wsReconnectTimer = null;
+    wsConnect();
+  }, 4000);
+}
+
+function wsSendData() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    logSerial('[WS] (hors ligne) — données non envoyées', 'log-system');
+    return;
+  }
+  const payload = JSON.stringify({
+    capteur_id:  state.capteurId || 1,
+    temperature: parseFloat(state.temp.toFixed(1)),
+    humidite:    parseFloat(state.hum.toFixed(1))
+  });
+  ws.send(payload);
+  logSerial(`[WS] → Envoyé: T:${state.temp.toFixed(1)}°C H:${state.hum.toFixed(1)}%`, 'log-data');
+}
+
+function updateWsStatus(connected) {
+  const dot    = $('statusDot');
+  const wsEl   = document.getElementById('wsStatusText');
+  if (dot) {
+    dot.style.background  = connected ? 'var(--green)' : 'var(--red)';
+    dot.style.boxShadow   = connected ? '0 0 8px var(--green)' : '0 0 8px var(--red)';
+  }
+  if (wsEl) {
+    wsEl.textContent = connected ? '🟢 WS Connecté' : '🔴 WS Déconnecté';
+    wsEl.style.color = connected ? 'var(--green)' : 'var(--red)';
+  }
+}
+
+// Injection du badge WS dans le header si absent
+(function injectWsBadge() {
+  const header = document.querySelector('header');
+  if (!header) return;
+  const badge = document.createElement('div');
+  badge.id = 'wsStatusText';
+  badge.style.cssText = 'font-size:11px;font-family:var(--mono);font-weight:700;color:var(--dim);margin-left:auto;padding-right:8px;';
+  badge.textContent = '⚪ WS Déconnecté';
+  header.appendChild(badge);
+})();
+
+// ── Simulation auto DHT (fluctuation légère) ──────────────
+let autoSim = true;
+let wsSendInterval = null;
+
+setInterval(() => {
+  if (!autoSim) return;
+  // Lire les valeurs actuelles des sliders, ajouter une dérive légère
+  const currentT = parseFloat($('tempSlider').value);
+  const currentH = parseFloat($('humSlider').value);
+  const driftT = (Math.random() - 0.5) * 0.4;
+  const driftH = (Math.random() - 0.5) * 1;
+  const newT = +(currentT + driftT).toFixed(1);
+  const newH = +(currentH + driftH).toFixed(1);
+  
+  // ⬅️ Fix: Mettre à jour les sliders + labels
+  $('tempSlider').value = newT;
+  $('humSlider').value = newH;
+  $('tempSliderVal').textContent = newT.toFixed(1) + '°C';
+  $('humSliderVal').textContent = newH.toFixed(1) + '%';
+  
+  // ⬅️ Fix: Mettre à jour le state
+  state.temp = newT;
+  state.hum = newH;
+  
+  // ⬅️ Fix: Appeler update() pour rafraîchir LEDs/LCD/buzzer/alertes
+  update();
+}, 2000);
+
+// Envoi WebSocket toutes les 2s
+wsSendInterval = setInterval(() => {
+  wsSendData();
+}, 2000);
+
+// ── Boot ──────────────────────────────────────────────────
+logSerial('╔══════════════════════════════════════╗', 'log-ok');
+logSerial('║   TT Workflow — Simulateur Wokwi v3  ║', 'log-ok');
+logSerial('║   NVIDIA NIM — 3 Capteurs actifs     ║', 'log-ok');
+logSerial('╚══════════════════════════════════════╝', 'log-ok');
+logSerial('[BOOT] ✅ ESP32 démarré — TT Workflow v3', 'log-ok');
+logSerial('[BOOT] ✅ DHT22 initialisé sur GPIO 4', 'log-ok');
+logSerial('[BOOT] ✅ LCD I2C 0x27 — OK', 'log-ok');
+logSerial('[BOOT] ✅ LEDs: TEMP(R) HUM(B) OK(G) WiFi(Y)', 'log-ok');
+logSerial('[BOOT] ✅ Buzzer sur GPIO 15 — OK', 'log-ok');
+logSerial('[BOOT] ✅ WebSocket client initialisé', 'log-ok');
+logSerial('[CAPTEUR] 📡 ID=1 — Jendouba (actif)', 'log-system');
+logSerial('[CAPTEUR] 📡 ID=2 — Ghardimaou (prêt)', 'log-system');
+logSerial('[CAPTEUR] 📡 ID=3 — Bousselem (prêt)', 'log-system');
+logSerial('[READY] 🔌 Connexion WebSocket backend en cours...', 'log-system');
+update();
+
+// Démarrage connexion WS (délai court pour laisser la page charger)
+setTimeout(wsConnect, 500);
+</script>
+</body>
+</html>

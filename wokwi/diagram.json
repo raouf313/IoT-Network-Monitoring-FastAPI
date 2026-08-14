@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "author": "TT Workflow — ESP32 + DHT22 + LEDs + LCD + Buzzer",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-v1", "id": "esp", "top": 140, "left": 20, "attrs": {} },
+
+    { "type": "wokwi-dht22", "id": "dht1", "top": 20,  "left": 240, "attrs": { "pin": "4", "label": "DHT22" } },
+
+    { "type": "wokwi-led", "id": "lR",  "top": 80,  "left": 320, "attrs": { "color": "red",    "label": "TEMP"  } },
+    { "type": "wokwi-led", "id": "lB",  "top": 80,  "left": 356, "attrs": { "color": "blue",   "label": "HUM"   } },
+    { "type": "wokwi-led", "id": "lG",  "top": 80,  "left": 392, "attrs": { "color": "green",  "label": "OK"    } },
+    { "type": "wokwi-led", "id": "lY",  "top": 80,  "left": 428, "attrs": { "color": "yellow", "label": "WiFi"  } },
+
+    { "type": "wokwi-buzzer", "id": "buz", "top": 160, "left": 320, "attrs": { "pin": "15" } },
+
+    { "type": "wokwi-lcd1602", "id": "lcd", "top": -60, "left": -140, "attrs": { "pins": "i2c", "address": "0x27" } },
+
+    { "type": "wokwi-resistor", "id": "r1", "top": 100, "left": 300, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 100, "left": 336, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r3", "top": 100, "left": 372, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r4", "top": 100, "left": 408, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    ["esp:3V3",   "dht1:VCC", "red",   []],
+    ["esp:GND.1", "dht1:GND", "black", []],
+    ["esp:D4",    "dht1:OUT", "green", []],
+
+    ["esp:D2",  "r1:1", "red",    []], ["r1:2", "lR:A", "", []], ["lR:C", "esp:GND.2", "black", []],
+    ["esp:D5",  "r2:1", "blue",   []], ["r2:2", "lB:A", "", []], ["lB:C", "esp:GND.2", "black", []],
+    ["esp:D18", "r3:1", "green",  []], ["r3:2", "lG:A", "", []], ["lG:C", "esp:GND.2", "black", []],
+    ["esp:D19", "r4:1", "yellow", []], ["r4:2", "lY:A", "", []], ["lY:C", "esp:GND.2", "black", []],
+
+    ["esp:D15",  "buz:1",    "orange", []],
+    ["buz:2",    "esp:GND.2","black",  []],
+
+    ["esp:D21",   "lcd:SDA", "purple", []],
+    ["esp:D22",   "lcd:SCL", "purple", []],
+    ["esp:3V3",   "lcd:VCC", "red",    []],
+    ["esp:GND.1", "lcd:GND", "black",  []]
+  ]
+}

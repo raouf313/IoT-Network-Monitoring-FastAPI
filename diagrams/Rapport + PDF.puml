@@ -1,0 +1,31 @@
+@startuml
+actor Technicien
+actor Admin
+
+boundary "TechnicienPage.js" as RapportPage
+
+control "FastAPI Backend" as API
+
+database "Table rapports" as Rapports
+
+control "ReportLab PDF" as PDF
+
+Technicien -> RapportPage : ajouter rapport
+
+RapportPage -> API : POST /api/rapports
+
+API -> Rapports : INSERT rapport
+
+Admin -> RapportPage : approuver rapport
+
+RapportPage -> API : validation rapport
+
+API -> PDF : générer PDF
+
+PDF --> API : fichier PDF
+
+API -> Rapports : UPDATE statut=approuve
+
+API --> RapportPage : téléchargement PDF
+
+@enduml

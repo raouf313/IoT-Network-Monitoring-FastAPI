@@ -1,0 +1,4 @@
+# Wokwi Library Manager
+DHT sensor library
+LiquidCrystal I2C
+ArduinoJson

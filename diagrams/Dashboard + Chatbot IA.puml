@@ -1,0 +1,46 @@
+@startuml
+actor Admin
+
+boundary "AdminDashboard.js" as Dashboard
+
+boundary "AdminDashboard.js\n(Chatbot section)" as Chatbot
+
+control "LM Studio API\nlocalhost:1234" as IA
+
+control "FastAPI Backend" as API
+
+database "Table missions" as Missions
+database "Table pannes" as Pannes
+database "Table utilisateurs" as Users
+
+== Dashboard KPI ==
+
+Admin -> Dashboard : voir statistiques
+
+Dashboard -> API : GET /api/dashboard
+
+API -> Missions : COUNT missions
+
+API -> Pannes : COUNT pannes
+
+API -> Users : COUNT techniciens
+
+API --> Dashboard : KPIs + graphiques
+
+== Chatbot IA ==
+
+Admin -> Chatbot : "techniciens disponibles ?"
+
+Chatbot -> IA : prompt utilisateur
+
+IA -> API : requête données
+
+API -> Users : SELECT disponible=true
+
+Users --> API : résultats
+
+API --> IA : données
+
+IA --> Chatbot : réponse intelligente
+
+@enduml

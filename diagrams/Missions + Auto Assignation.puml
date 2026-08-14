@@ -1,0 +1,41 @@
+@startuml
+actor Admin
+
+boundary "AdminDashboard.js" as MissionPage
+
+control "Scheduler asyncio\nAuto Assign" as Scheduler
+
+control "FastAPI /missions" as API
+
+database "Table missions" as Missions
+database "Table utilisateurs" as Users
+
+actor Technicien
+
+Admin -> MissionPage : créer mission
+
+MissionPage -> API : POST /api/missions
+
+API -> Missions : INSERT mission en_attente
+
+loop toutes les 30 secondes
+
+Scheduler -> Missions : chercher missions en_attente
+
+Scheduler -> Users : chercher technicien disponible
+
+alt technicien trouvé
+
+Scheduler -> Missions : UPDATE technicien_id\nstatut=acceptee
+
+Scheduler --> Technicien : mission assignée
+
+else aucun disponible
+
+Scheduler -> Missions : garder en attente
+
+end
+
+end
+
+@enduml

@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Couleurs exactes du logo Tunisie Telecom */
+  --tt-red:    #E30613;
+  --tt-orange: #F7941D;
+  --tt-yellow: #FFD700;
+  --tt-green:  #39B54A;
+  --tt-teal:   #00A99D;
+  --tt-blue:   #0072BC;
+  --tt-purple: #662D91;
+  --tt-dark:   #1a1a2e;
+
+  /* UI colors basées sur palette TT */
+  --bg:        #f0f4ff;
+  --bg2:       #ffffff;
+  --card:      #ffffff;
+  --sidebar:   #1a1a2e;
+  --border:    #e0e7ff;
+  --accent:    #E30613;
+  --accent2:   #0072BC;
+  --success:   #39B54A;
+  --warning:   #F7941D;
+  --danger:    #E30613;
+  --info:      #0072BC;
+  --text:      #1e293b;
+  --muted:     #64748b;
+  --font-d:    'Syne', sans-serif;
+  --font-b:    'DM Sans', sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height:100vh}
+h1,h2,h3{font-family:var(--font-d)}
+button{cursor:pointer;border:none;font-family:var(--font-b);transition:all .15s}
+button:active{transform:scale(0.97)}
+input,textarea,select{font-family:var(--font-b);outline:none}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--tt-red),var(--tt-orange));border-radius:2px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:0 2px 8px rgba(0,114,188,0.06)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.badge-danger {background:#fff0f0;color:#E30613;border:1px solid #ffd0d0}
+.badge-warning{background:#fff8f0;color:#F7941D;border:1px solid #ffe0b0}
+.badge-success{background:#f0fff4;color:#39B54A;border:1px solid #c0eec8}
+.badge-info   {background:#f0f8ff;color:#0072BC;border:1px solid #c0dcf4}
+.badge-purple {background:#f8f0ff;color:#662D91;border:1px solid #dcc8f0}
+.badge-muted  {background:#f8fafc;color:#64748b;border:1px solid #e2e8f0}
+
+/* Gradient TT pour éléments spéciaux */
+.tt-gradient{background:linear-gradient(135deg,#E30613,#F7941D,#FFD700,#39B54A,#0072BC,#662D91)}
+.tt-gradient-red{background:linear-gradient(135deg,#E30613,#F7941D)}
+.tt-gradient-blue{background:linear-gradient(135deg,#0072BC,#00A99D)}
